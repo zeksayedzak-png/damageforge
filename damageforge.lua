@@ -1,6 +1,5 @@
--- سكريبت: Rapid Stalker V3 (ثانية رايح + ثانية جاي)
+-- سكريبت: Teleport Stalker (نقل فوري مع تأخير ثانية)
 local player = game.Players.LocalPlayer
-local tweenService = game:GetService("TweenService")
 
 -- 1. الجزر المستهدفة
 local targetIslands = {
@@ -26,20 +25,17 @@ local function findBlarants()
     return blarants
 end
 
--- 3. النقل بسرعة ثابتة (Tween)
-local function smoothTeleport(targetPos, duration)
+-- 3. النقل الفوري (Teleport)
+local function teleport(pos)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-    local tween = tweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
-    tween:Play()
-    tween.Completed:Wait()
+    if hrp then
+        hrp.CFrame = CFrame.new(pos)
+    end
 end
 
 -- 4. إنشاء واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "RapidStalkerV3"
+screenGui.Name = "TeleportStalker"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
@@ -76,7 +72,7 @@ stopButton.Parent = frame
 local label = Instance.new("TextLabel")
 label.Size = UDim2.new(0, 190, 0, 18)
 label.Position = UDim2.new(0.5, -95, 0, 4)
-label.Text = "🐌 ملاحقة بطيئة (ثانية/ثانية)"
+label.Text = "⚡ Teleport Stalker"
 label.BackgroundTransparency = 1
 label.TextColor3 = Color3.fromRGB(0, 255, 255)
 label.TextSize = 11
@@ -93,7 +89,7 @@ local function stalk()
         local blarants = findBlarants()
         if #blarants == 0 then
             currentTarget = nil
-            label.Text = "🐌 لا يوجد Blarant"
+            label.Text = "⚡ لا يوجد Blarant"
             wait(1)
         else
             if not currentTarget or not currentTarget.Parent then
@@ -106,18 +102,18 @@ local function stalk()
                 local startPos = hrp.Position
                 local targetPos = currentTarget.Position + Vector3.new(0, 5, 0)
                 
-                -- الذهاب إلى Blarant (ثانية واحدة)
-                smoothTeleport(targetPos, 1)
+                -- Teleport فوري إلى Blarant
+                teleport(targetPos)
+                wait(1) -- انتظر ثانية
                 
-                -- العودة إلى نقطة البداية (ثانية واحدة)
-                smoothTeleport(startPos, 1)
+                -- Teleport فوري إلى نقطة البداية
+                teleport(startPos)
+                wait(1) -- انتظر ثانية
             end
-            
-            wait(0.1) -- استراحة قصيرة بين الدورات
         end
     end
     currentTarget = nil
-    label.Text = "🐌 متوقف"
+    label.Text = "⚡ متوقف"
 end
 
 startButton.MouseButton1Click:Connect(function()
@@ -132,4 +128,4 @@ stopButton.MouseButton1Click:Connect(function()
     active = false
 end)
 
-print("✅ سكريبت الملاحقة البطيئة يعمل - اضغط 'تشغيل' للبدء")
+print("✅ سكريبت Teleport Stalker يعمل - اضغط 'تشغيل' للبدء")
