@@ -1,6 +1,8 @@
--- سكريبت: البحث عن نواة Blarant (للإمساك عن بُعد)
+-- سكريبت: اعتراض الـ Blarant فور ظهوره ونقله إليك
 local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
 
+-- 1. الجزر المستهدفة (حيث يرسبن الـ Blarant عادة)
 local targetIslands = {
     Vector3.new(3135.0, 10.0, 0.0),
     Vector3.new(3490.0, 10.0, 0.0),
@@ -8,50 +10,60 @@ local targetIslands = {
     Vector3.new(4164.5, 10.0, 0.0)
 }
 
-local function findBlarants()
-    local blarants = {}
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Part") and not obj.Anchored and not obj.CanCollide then
-            for _, islandPos in ipairs(targetIslands) do
-                if (obj.Position - islandPos).Magnitude < 150 then
-                    table.insert(blarants, obj)
-                    break
-                end
+-- 2. التحقق مما إذا كان الـ Blarant قد رسبن فوق الجزر
+local function isBlarantOnIslands(blarant)
+    for _, islandPos in ipairs(targetIslands) do
+        if (blarant.Position - islandPos).Magnitude < 150 then
+            return true
+        end
+    end
+    return false
+end
+
+-- 3. نقل الـ Blarant إلى مكانك فوراً
+local function teleportBlarantToMe(blarant)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    -- نقل الـ Blarant إلى موقعك (أمامك مباشرة)
+    blarant.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 3, 0))
+    blarant.CanCollide = false -- حتى لا يزعجك
+    print("✅ تم اعتراض Blarant ونقله إليك")
+end
+
+-- 4. مراقبة الأجزاء الجديدة التي تظهر في الـ workspace
+local function startMonitoring()
+    workspace.ChildAdded:Connect(function(child)
+        -- انتظر قليلاً حتى يتم تهيئة الـ Part بالكامل
+        task.wait(0.1)
+        
+        -- إذا كان الطفل جزءاً (Part) وغير مثبت وغير متصادم
+        if child:IsA("Part") and not child.Anchored and not child.CanCollide then
+            if isBlarantOnIslands(child) then
+                teleportBlarantToMe(child)
             end
         end
-    end
-    return blarants
-end
-
--- البحث عن "نواة" (RemoteEvent أو Value) مرتبطة بـ Blarant
-local function findBlarantCore(blarant)
-    -- البحث داخل الـ Blarant نفسه
-    for _, child in ipairs(blarant:GetChildren()) do
-        if child:IsA("RemoteEvent") and child.Name:lower():find("catch") then
-            return child, "RemoteEvent"
-        elseif child:IsA("IntValue") and child.Name:lower():find("id") then
-            return child.Value, "IntValue"
-        elseif child:IsA("ObjectValue") then
-            return child.Value, "ObjectValue"
-        end
-    end
+    end)
     
-    -- البحث في الـ workspace عن RemoteEvent مرتبط
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("RemoteEvent") and obj.Name:lower():find("blarant") then
-            return obj, "RemoteEvent (global)"
+    -- أيضاً مراقبة الأجزاء التي تضاف داخل أجزاء أخرى (مثل Model)
+    workspace.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA("Part") and not descendant.Anchored and not descendant.CanCollide then
+            task.wait(0.1)
+            if isBlarantOnIslands(descendant) then
+                teleportBlarantToMe(descendant)
+            end
         end
-    end
-    return nil, nil
+    end)
 end
 
--- إنشاء واجهة بسيطة (اختبارية)
+-- 5. إنشاء واجهة التحكم (للعلم فقط، لا تحتاج إلى أزرار)
 local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BlarantInterceptor"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 250, 0, 100)
-frame.Position = UDim2.new(0.5, -125, 0.8, 0)
+frame.Size = UDim2.new(0, 220, 0, 50)
+frame.Position = UDim2.new(0.5, -110, 0.8, 0)
 frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 frame.BackgroundTransparency = 0.5
 frame.BorderSizePixel = 2
@@ -60,39 +72,17 @@ frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 200, 0, 50)
-button.Position = UDim2.new(0.5, -100, 0.5, -25)
-button.Text = "💀 البحث عن نواة Blarant"
-button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Font = Enum.Font.GothamBold
-button.TextSize = 12
-button.Parent = frame
-
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(0, 230, 0, 20)
-label.Position = UDim2.new(0.5, -115, 0, 5)
-label.Text = "اضغط للبحث عن النواة"
+label.Size = UDim2.new(0, 200, 0, 30)
+label.Position = UDim2.new(0.5, -100, 0.5, -15)
+label.Text = "💀 اعتراض Blarant (شغال)"
 label.BackgroundTransparency = 1
-label.TextColor3 = Color3.fromRGB(255, 255, 255)
-label.TextSize = 10
+label.TextColor3 = Color3.fromRGB(255, 0, 0)
+label.TextSize = 12
+label.Font = Enum.Font.GothamBold
 label.Parent = frame
 
-button.MouseButton1Click:Connect(function()
-    local blarants = findBlarants()
-    if #blarants == 0 then
-        label.Text = "❌ لا يوجد Blarant"
-        return
-    end
-    
-    for _, blarant in ipairs(blarants) do
-        local core, coreType = findBlarantCore(blarant)
-        if core then
-            label.Text = "✅ وجدت نواة: " .. coreType
-            print("Blarant:", blarant.Name, "Core:", core, "Type:", coreType)
-        else
-            label.Text = "⚠️ لم أجد نواة واضحة"
-        end
-    end
-end)
+-- تشغيل المراقبة
+startMonitoring()
+
+print("✅ سكريبت اعتراض الـ Blarant يعمل - أي Blarant يرسبن سيأتي إليك فوراً")
