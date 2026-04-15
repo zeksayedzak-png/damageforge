@@ -1,6 +1,6 @@
--- سكريبت: Ghost Stalker (إيهام اللعبة بأنك فوق Blarant)
+-- سكريبت: Rapid Stalker V3 (ثانية رايح + ثانية جاي)
 local player = game.Players.LocalPlayer
-local runService = game:GetService("RunService")
+local tweenService = game:GetService("TweenService")
 
 -- 1. الجزر المستهدفة
 local targetIslands = {
@@ -26,48 +26,45 @@ local function findBlarants()
     return blarants
 end
 
--- 3. إيهام اللعبة (دون تحريك الشخصية)
-local function fakePosition(blarantPos)
+-- 3. النقل بسرعة ثابتة (Tween)
+local function smoothTeleport(targetPos, duration)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    -- حفظ الموقع الحقيقي
-    local realPos = hrp.CFrame
-    
-    -- إيهام اللعبة (نغير الموقع للحظة ثم نعيده فوراً)
-    hrp.CFrame = CFrame.new(blarantPos + Vector3.new(0, 5, 0))
-    runService.RenderStepped:Wait() -- أسرع من Heartbeat
-    hrp.CFrame = realPos
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    tween:Play()
+    tween.Completed:Wait()
 end
 
 -- 4. إنشاء واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "GhostStalker"
+screenGui.Name = "RapidStalkerV3"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 180, 0, 80)
-frame.Position = UDim2.new(0.5, -90, 0.8, 0)
+frame.Size = UDim2.new(0, 200, 0, 70)
+frame.Position = UDim2.new(0.5, -100, 0.8, 0)
 frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 frame.BackgroundTransparency = 0.5
 frame.BorderSizePixel = 2
-frame.BorderColor3 = Color3.fromRGB(150, 0, 255)
+frame.BorderColor3 = Color3.fromRGB(0, 255, 255)
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
 local startButton = Instance.new("TextButton")
-startButton.Size = UDim2.new(0, 70, 0, 45)
+startButton.Size = UDim2.new(0, 80, 0, 45)
 startButton.Position = UDim2.new(0.05, 0, 0.5, -22)
-startButton.Text = "👻 تشغيل"
-startButton.BackgroundColor3 = Color3.fromRGB(150, 0, 255)
-startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+startButton.Text = "▶ تشغيل"
+startButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+startButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 startButton.Font = Enum.Font.GothamBold
 startButton.TextSize = 12
 startButton.Parent = frame
 
 local stopButton = Instance.new("TextButton")
-stopButton.Size = UDim2.new(0, 70, 0, 45)
+stopButton.Size = UDim2.new(0, 80, 0, 45)
 stopButton.Position = UDim2.new(0.55, 0, 0.5, -22)
 stopButton.Text = "⏹ إيقاف"
 stopButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -77,52 +74,62 @@ stopButton.TextSize = 12
 stopButton.Parent = frame
 
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(0, 170, 0, 18)
-label.Position = UDim2.new(0.5, -85, 0, 4)
-label.Text = "👻 وضع الشبح (إيهام)"
+label.Size = UDim2.new(0, 190, 0, 18)
+label.Position = UDim2.new(0.5, -95, 0, 4)
+label.Text = "🐌 ملاحقة بطيئة (ثانية/ثانية)"
 label.BackgroundTransparency = 1
-label.TextColor3 = Color3.fromRGB(150, 0, 255)
+label.TextColor3 = Color3.fromRGB(0, 255, 255)
 label.TextSize = 11
 label.Font = Enum.Font.Gotham
 label.Parent = frame
 
--- 5. منطق التشغيل (إيهام مستمر)
+-- 5. منطق التشغيل
 local active = false
 local currentTarget = nil
-local ghostCoroutine = nil
+local stalkerCoroutine = nil
 
-local function ghostMode()
+local function stalk()
     while active do
         local blarants = findBlarants()
         if #blarants == 0 then
             currentTarget = nil
-            label.Text = "👻 لا يوجد Blarant"
-            wait(0.5)
+            label.Text = "🐌 لا يوجد Blarant"
+            wait(1)
         else
             if not currentTarget or not currentTarget.Parent then
                 currentTarget = blarants[math.random(1, #blarants)]
-                label.Text = "🎯 إيهام فوق Blarant"
+                label.Text = "🎯 ملاحقة Blarant"
             end
             
-            -- إيهام اللعبة بأنك فوق Blarant (كل 0.3 ثانية)
-            fakePosition(currentTarget.Position)
-            wait(0.3) -- يكفي لإظهار زر الإمساك (بدون إرهاق اللعبة)
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local startPos = hrp.Position
+                local targetPos = currentTarget.Position + Vector3.new(0, 5, 0)
+                
+                -- الذهاب إلى Blarant (ثانية واحدة)
+                smoothTeleport(targetPos, 1)
+                
+                -- العودة إلى نقطة البداية (ثانية واحدة)
+                smoothTeleport(startPos, 1)
+            end
+            
+            wait(0.1) -- استراحة قصيرة بين الدورات
         end
     end
     currentTarget = nil
-    label.Text = "👻 متوقف"
+    label.Text = "🐌 متوقف"
 end
 
 startButton.MouseButton1Click:Connect(function()
     if active then return end
     active = true
-    if ghostCoroutine then coroutine.close(ghostCoroutine) end
-    ghostCoroutine = coroutine.wrap(ghostMode)
-    ghostCoroutine()
+    if stalkerCoroutine then coroutine.close(stalkerCoroutine) end
+    stalkerCoroutine = coroutine.wrap(stalk)
+    stalkerCoroutine()
 end)
 
 stopButton.MouseButton1Click:Connect(function()
     active = false
 end)
 
-print("✅ وضع الشبح يعمل - اضغط 'تشغيل' لإيهام اللعبة بأنك فوق Blarant")
+print("✅ سكريبت الملاحقة البطيئة يعمل - اضغط 'تشغيل' للبدء")
