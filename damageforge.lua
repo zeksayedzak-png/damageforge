@@ -1,4 +1,4 @@
--- سكريبت: Rapid Stalker (تنقل خاطف بينك وبين Blarant)
+-- سكريبت: Rapid Stalker V2 (تكرار مستمر حتى اختفاء Blarant)
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
 
@@ -26,20 +26,22 @@ local function findBlarants()
     return blarants
 end
 
--- 3. النقل الخاطف (بين موقعك وموقع الهدف)
+-- 3. النقل الخاطف (ذهاب فقط، ثم إعادة فورية)
 local function rapidTeleport(targetPos)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
     local oldPos = hrp.CFrame
+    -- الذهاب إلى Blarant
     hrp.CFrame = CFrame.new(targetPos)
-    runService.Heartbeat:Wait()
+    runService.Heartbeat:Wait() -- انتظر إطار واحد فقط (أقل من 0.03 ثانية)
+    -- العودة فوراً
     hrp.CFrame = oldPos
 end
 
 -- 4. إنشاء واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "RapidStalker"
+screenGui.Name = "RapidStalkerV2"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
@@ -83,7 +85,7 @@ label.TextSize = 11
 label.Font = Enum.Font.Gotham
 label.Parent = frame
 
--- 5. منطق التشغيل
+-- 5. منطق التشغيل (تكرار مستمر)
 local active = false
 local currentTarget = nil
 local stalkerCoroutine = nil
@@ -95,7 +97,7 @@ local function stalk()
         if #blarants == 0 then
             currentTarget = nil
             label.Text = "⚡ لا يوجد Blarant"
-            wait(1)
+            wait(0.5)
         else
             -- اختيار هدف (نفس الهدف السابق إذا كان لا يزال موجوداً)
             if not currentTarget or not currentTarget.Parent then
@@ -103,9 +105,9 @@ local function stalk()
                 label.Text = "🎯 ملاحقة Blarant"
             end
             
-            -- النقل الخاطف إلى الهدف
+            -- النقل الخاطف المستمر (كل 0.1 ثانية)
             rapidTeleport(currentTarget.Position + Vector3.new(0, 5, 0))
-            wait(0.2) -- سرعة التنقل (0.2 ثانية بين كل نقلة)
+            wait(0.1) -- تكرار سريع جداً (10 مرات في الثانية)
         end
     end
     currentTarget = nil
@@ -124,4 +126,4 @@ stopButton.MouseButton1Click:Connect(function()
     active = false
 end)
 
-print("✅ سكريبت الملاحقة الخاطفة يعمل - اضغط 'تشغيل' للبدء")
+print("✅ سكريبت الملاحقة الخاطفة V2 يعمل - اضغط 'تشغيل' للبدء")
