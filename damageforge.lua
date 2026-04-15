@@ -1,4 +1,4 @@
--- سكريبت: Rapid Stalker V2 (ملاحقة خاطفة) + إلغاء مؤقت الإمساك
+-- سكريبت: Rapid Stalker V3 (ملاحقة + إلغاء مؤقت + ضغط تلقائي)
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
 
@@ -36,25 +36,26 @@ local function rapidTeleport(targetPos)
     hrp.CFrame = oldPos
 end
 
--- 4. إلغاء مؤقت (Cooldown) زر الإمساك الأصلي
-local function disableCatchCooldown()
+-- 4. إلغاء مؤقت زر الإمساك + الضغط التلقائي
+local function handleCatchButton()
     for _, btn in ipairs(player.PlayerGui:GetDescendants()) do
         if btn:IsA("TextButton") and (btn.Name:lower():find("catch") or btn.Text:lower():find("امسك")) then
+            -- إلغاء المؤقت
             btn.AutoButtonColor = false
             if btn:FindFirstChild("Debounce") then
                 btn.Debounce = false
             end
-            local oldClick = btn.Click
-            btn.Click = function()
-                oldClick()
-            end
+            -- الضغط التلقائي (بسرعة الضوء)
+            btn:Click()
+            return true
         end
     end
+    return false
 end
 
 -- 5. واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "RapidStalkerV2"
+screenGui.Name = "AutoCatchStalker"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
@@ -63,7 +64,7 @@ frame.Position = UDim2.new(0.5, -100, 0.8, 0)
 frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 frame.BackgroundTransparency = 0.5
 frame.BorderSizePixel = 2
-frame.BorderColor3 = Color3.fromRGB(0, 255, 255)
+frame.BorderColor3 = Color3.fromRGB(255, 0, 255)
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
@@ -91,9 +92,9 @@ stopButton.Parent = frame
 local label = Instance.new("TextLabel")
 label.Size = UDim2.new(0, 190, 0, 18)
 label.Position = UDim2.new(0.5, -95, 0, 4)
-label.Text = "⚡ ملاحقة خاطفة + لا مؤقت"
+label.Text = "🤖 ضغط تلقائي + ملاحقة"
 label.BackgroundTransparency = 1
-label.TextColor3 = Color3.fromRGB(0, 255, 255)
+label.TextColor3 = Color3.fromRGB(255, 0, 255)
 label.TextSize = 11
 label.Font = Enum.Font.Gotham
 label.Parent = frame
@@ -101,48 +102,47 @@ label.Parent = frame
 -- 6. منطق التشغيل الرئيسي
 local active = false
 local currentTarget = nil
-local stalkerCoroutine = nil
+local mainCoroutine = nil
 
--- مراقبة إلغاء المؤقت (تعمل طوال الوقت)
-local function monitorCooldown()
-    while true do
-        disableCatchCooldown()
-        wait(0.5)
-    end
-end
-coroutine.wrap(monitorCooldown)()
-
--- وظيفة الملاحقة
-local function stalk()
+local function autoCatch()
     while active do
         local blarants = findBlarants()
         if #blarants == 0 then
             currentTarget = nil
-            label.Text = "⚡ لا يوجد Blarant"
+            label.Text = "🤖 لا يوجد Blarant"
             wait(0.5)
         else
             if not currentTarget or not currentTarget.Parent then
                 currentTarget = blarants[math.random(1, #blarants)]
-                label.Text = "🎯 ملاحقة Blarant"
+                label.Text = "🎯 استهداف Blarant"
             end
+            
+            -- النقل الخاطف
             rapidTeleport(currentTarget.Position + Vector3.new(0, 5, 0))
-            wait(0.1)
+            
+            -- محاولة الضغط على زر الإمساك (بسرعة الضوء)
+            local caught = handleCatchButton()
+            if caught then
+                label.Text = "✅ تم الإمساك! انتظر التالي"
+                wait(0.5)
+            else
+                wait(0.1)
+            end
         end
     end
-    currentTarget = nil
-    label.Text = "⚡ متوقف"
+    label.Text = "🤖 متوقف"
 end
 
 startButton.MouseButton1Click:Connect(function()
     if active then return end
     active = true
-    if stalkerCoroutine then coroutine.close(stalkerCoroutine) end
-    stalkerCoroutine = coroutine.wrap(stalk)
-    stalkerCoroutine()
+    if mainCoroutine then coroutine.close(mainCoroutine) end
+    mainCoroutine = coroutine.wrap(autoCatch)
+    mainCoroutine()
 end)
 
 stopButton.MouseButton1Click:Connect(function()
     active = false
 end)
 
-print("✅ السكريبت يعمل: ملاحقة خاطفة + إلغاء مؤقت زر الإمساك")
+print("✅ السكريبت يعمل: ملاحقة خاطفة + إلغاء مؤقت + ضغط تلقائي (بسرعة الضوء)")
