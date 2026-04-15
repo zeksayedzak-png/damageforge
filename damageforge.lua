@@ -1,9 +1,9 @@
--- سكريبت: الطيران تحت الأرض (Y = -2.9 ثابت) + سرعة متغيرة + عودة تلقائية
+-- سكريبت: الطيران تحت الأرض (Y = -2.9 ثابت) + سرعة متغيرة (+100/-100) + اختراق الجدران
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
 local tweenService = game:GetService("TweenService")
 
--- 1. الجزر المستهدفة (المواقع التي أرسلتها سابقاً)
+-- 1. الجزر المستهدفة
 local targetIslands = {
     Vector3.new(3135.0, 10.0, 0.0),
     Vector3.new(3490.0, 10.0, 0.0),
@@ -11,7 +11,7 @@ local targetIslands = {
     Vector3.new(4164.5, 10.0, 0.0)
 }
 
--- 2. البحث عن أقرب Blarant (Part غير مثبت وغير متصادم فوق الجزر)
+-- 2. البحث عن أقرب Blarant
 local function findNearestBlarant()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
@@ -35,13 +35,25 @@ local function findNearestBlarant()
     return nearest
 end
 
--- 3. الطيران تحت الأرض (ثابت Y = -2.9)
+-- 3. اختراق الجدران (تعطيل التصادم)
+local function enableNoClip()
+    local character = player.Character
+    if not character then return end
+    
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end
+
+-- 4. الطيران تحت الأرض (ثابت Y = -2.9)
 local function flyToPosition(targetPos, speed, callback)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
     local startPos = hrp.Position
-    local target = Vector3.new(targetPos.X, -2.9, targetPos.Z) -- نثبت Y
+    local target = Vector3.new(targetPos.X, -2.9, targetPos.Z)
     
     local distance = (target - startPos).Magnitude
     local duration = distance / speed
@@ -53,7 +65,7 @@ local function flyToPosition(targetPos, speed, callback)
     return tween
 end
 
--- 4. واجهة التحكم
+-- 5. واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "UnderGroundFlyer"
 screenGui.Parent = player.PlayerGui
@@ -91,7 +103,7 @@ stopButton.Font = Enum.Font.GothamBold
 stopButton.TextSize = 12
 stopButton.Parent = frame
 
--- زر زيادة السرعة
+-- زر زيادة السرعة (+100)
 local speedUp = Instance.new("TextButton")
 speedUp.Size = UDim2.new(0, 40, 0, 40)
 speedUp.Position = UDim2.new(0.05, 0, 0.65, 0)
@@ -102,7 +114,7 @@ speedUp.Font = Enum.Font.GothamBold
 speedUp.TextSize = 18
 speedUp.Parent = frame
 
--- زر نقص السرعة
+-- زر نقص السرعة (-100)
 local speedDown = Instance.new("TextButton")
 speedDown.Size = UDim2.new(0, 40, 0, 40)
 speedDown.Position = UDim2.new(0.25, 0, 0.65, 0)
@@ -135,7 +147,7 @@ statusLabel.TextSize = 10
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.Parent = frame
 
--- 5. منطق التشغيل
+-- 6. منطق التشغيل
 local currentSpeed = 50
 local active = false
 local startPos = nil
@@ -143,14 +155,14 @@ local currentTween = nil
 
 speedLabel.Text = "سرعة: " .. currentSpeed
 
--- تحديث السرعة
+-- تحديث السرعة (+100 / -100)
 speedUp.MouseButton1Click:Connect(function()
-    currentSpeed = currentSpeed + 10
+    currentSpeed = currentSpeed + 100
     speedLabel.Text = "سرعة: " .. currentSpeed
 end)
 
 speedDown.MouseButton1Click:Connect(function()
-    currentSpeed = math.max(10, currentSpeed - 10)
+    currentSpeed = math.max(10, currentSpeed - 100)
     speedLabel.Text = "سرعة: " .. currentSpeed
 end)
 
@@ -160,7 +172,10 @@ startButton.MouseButton1Click:Connect(function()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    startPos = hrp.Position -- حفظ نقطة البداية
+    -- تفعيل اختراق الجدران
+    enableNoClip()
+    
+    startPos = hrp.Position
     local blarant = findNearestBlarant()
     if not blarant then
         statusLabel.Text = "❌ لا يوجد Blarant"
@@ -197,4 +212,4 @@ stopButton.MouseButton1Click:Connect(function()
     end
 end)
 
-print("✅ سكريبت الطيران تحت الأرض يعمل - Y = -2.9 ثابت")
+print("✅ السكريبت يعمل: سرعة +100/-100 + اختراق الجدران")
