@@ -1,4 +1,4 @@
--- سكريبت: Rapid Stalker V2 (تكرار مستمر حتى اختفاء Blarant)
+-- سكريبت: Ghost Stalker (إيهام اللعبة بأنك فوق Blarant)
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
 
@@ -10,7 +10,7 @@ local targetIslands = {
     Vector3.new(4164.5, 10.0, 0.0)
 }
 
--- 2. البحث عن Blarant (غير مثبت، غير متصادم) فوق الجزر
+-- 2. البحث عن Blarant
 local function findBlarants()
     local blarants = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -26,47 +26,48 @@ local function findBlarants()
     return blarants
 end
 
--- 3. النقل الخاطف (ذهاب فقط، ثم إعادة فورية)
-local function rapidTeleport(targetPos)
+-- 3. إيهام اللعبة (دون تحريك الشخصية)
+local function fakePosition(blarantPos)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local oldPos = hrp.CFrame
-    -- الذهاب إلى Blarant
-    hrp.CFrame = CFrame.new(targetPos)
-    runService.Heartbeat:Wait() -- انتظر إطار واحد فقط (أقل من 0.03 ثانية)
-    -- العودة فوراً
-    hrp.CFrame = oldPos
+    -- حفظ الموقع الحقيقي
+    local realPos = hrp.CFrame
+    
+    -- إيهام اللعبة (نغير الموقع للحظة ثم نعيده فوراً)
+    hrp.CFrame = CFrame.new(blarantPos + Vector3.new(0, 5, 0))
+    runService.RenderStepped:Wait() -- أسرع من Heartbeat
+    hrp.CFrame = realPos
 end
 
 -- 4. إنشاء واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "RapidStalkerV2"
+screenGui.Name = "GhostStalker"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 70)
-frame.Position = UDim2.new(0.5, -100, 0.8, 0)
+frame.Size = UDim2.new(0, 180, 0, 80)
+frame.Position = UDim2.new(0.5, -90, 0.8, 0)
 frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 frame.BackgroundTransparency = 0.5
 frame.BorderSizePixel = 2
-frame.BorderColor3 = Color3.fromRGB(0, 255, 255)
+frame.BorderColor3 = Color3.fromRGB(150, 0, 255)
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
 local startButton = Instance.new("TextButton")
-startButton.Size = UDim2.new(0, 80, 0, 45)
+startButton.Size = UDim2.new(0, 70, 0, 45)
 startButton.Position = UDim2.new(0.05, 0, 0.5, -22)
-startButton.Text = "▶ تشغيل"
-startButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-startButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+startButton.Text = "👻 تشغيل"
+startButton.BackgroundColor3 = Color3.fromRGB(150, 0, 255)
+startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 startButton.Font = Enum.Font.GothamBold
 startButton.TextSize = 12
 startButton.Parent = frame
 
 local stopButton = Instance.new("TextButton")
-stopButton.Size = UDim2.new(0, 80, 0, 45)
+stopButton.Size = UDim2.new(0, 70, 0, 45)
 stopButton.Position = UDim2.new(0.55, 0, 0.5, -22)
 stopButton.Text = "⏹ إيقاف"
 stopButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -76,54 +77,52 @@ stopButton.TextSize = 12
 stopButton.Parent = frame
 
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(0, 190, 0, 18)
-label.Position = UDim2.new(0.5, -95, 0, 4)
-label.Text = "⚡ ملاحقة خاطفة"
+label.Size = UDim2.new(0, 170, 0, 18)
+label.Position = UDim2.new(0.5, -85, 0, 4)
+label.Text = "👻 وضع الشبح (إيهام)"
 label.BackgroundTransparency = 1
-label.TextColor3 = Color3.fromRGB(0, 255, 255)
+label.TextColor3 = Color3.fromRGB(150, 0, 255)
 label.TextSize = 11
 label.Font = Enum.Font.Gotham
 label.Parent = frame
 
--- 5. منطق التشغيل (تكرار مستمر)
+-- 5. منطق التشغيل (إيهام مستمر)
 local active = false
 local currentTarget = nil
-local stalkerCoroutine = nil
+local ghostCoroutine = nil
 
-local function stalk()
+local function ghostMode()
     while active do
-        -- تحديث قائمة الـ Blarants
         local blarants = findBlarants()
         if #blarants == 0 then
             currentTarget = nil
-            label.Text = "⚡ لا يوجد Blarant"
+            label.Text = "👻 لا يوجد Blarant"
             wait(0.5)
         else
-            -- اختيار هدف (نفس الهدف السابق إذا كان لا يزال موجوداً)
             if not currentTarget or not currentTarget.Parent then
                 currentTarget = blarants[math.random(1, #blarants)]
-                label.Text = "🎯 ملاحقة Blarant"
+                label.Text = "🎯 إيهام فوق Blarant"
             end
             
-            -- النقل الخاطف المستمر (كل 0.1 ثانية)
-            rapidTeleport(currentTarget.Position + Vector3.new(0, 5, 0))
-            wait(0.03) -- تكرار سريع جداً (10 مرات في الثانية)
+            -- إيهام اللعبة بأنك فوق Blarant (كل 0.3 ثانية)
+            fakePosition(currentTarget.Position)
+            wait(0.3) -- يكفي لإظهار زر الإمساك (بدون إرهاق اللعبة)
         end
     end
     currentTarget = nil
-    label.Text = "⚡ متوقف"
+    label.Text = "👻 متوقف"
 end
 
 startButton.MouseButton1Click:Connect(function()
     if active then return end
     active = true
-    if stalkerCoroutine then coroutine.close(stalkerCoroutine) end
-    stalkerCoroutine = coroutine.wrap(stalk)
-    stalkerCoroutine()
+    if ghostCoroutine then coroutine.close(ghostCoroutine) end
+    ghostCoroutine = coroutine.wrap(ghostMode)
+    ghostCoroutine()
 end)
 
 stopButton.MouseButton1Click:Connect(function()
     active = false
 end)
 
-print("✅ سكريبت الملاحقة الخاطفة V2 يعمل - اضغط 'تشغيل' للبدء")
+print("✅ وضع الشبح يعمل - اضغط 'تشغيل' لإيهام اللعبة بأنك فوق Blarant")
