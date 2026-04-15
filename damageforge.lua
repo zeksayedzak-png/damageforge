@@ -1,7 +1,6 @@
--- سكريبت: الطيران العلوي (Y = 67) + نزول على Blarant + عودة تلقائية
+-- سكريبت: الطيران العلوي (Y = 67) مع صعود أولي + عودة صحيحة
 local player = game.Players.LocalPlayer
 local tweenService = game:GetService("TweenService")
-local runService = game:GetService("RunService")
 
 -- 1. الجزر المستهدفة
 local targetIslands = {
@@ -35,33 +34,11 @@ local function findNearestBlarant()
     return nearest
 end
 
--- 3. الطيران في خط مستقيم (Y ثابت)
-local function flyToPosition(targetPos, speed, onComplete)
+-- 3. الصعود/النزول العمودي (تغيير Y فقط)
+local function changeHeight(targetY, speed, onComplete)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local startPos = hrp.Position
-    -- نثبت Y = 67 أثناء الطيران
-    local target = Vector3.new(targetPos.X, 67, targetPos.Z)
-    
-    local distance = (target - startPos).Magnitude
-    local duration = distance / speed
-    
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-    local tween = tweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(target)})
-    tween:Play()
-    if onComplete then
-        tween.Completed:Connect(onComplete)
-    end
-    return tween
-end
-
--- 4. النزول العمودي (من Y = 67 إلى داخل Blarant)
-local function descendToBlarant(blarant, speed, onComplete)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp or not blarant then return end
-    
-    local targetY = blarant.Position.Y + 3 -- داخل الـ Blarant (أعلى بقليل)
     local startY = hrp.Position.Y
     local distance = math.abs(targetY - startY)
     local duration = distance / speed
@@ -75,12 +52,12 @@ local function descendToBlarant(blarant, speed, onComplete)
     return tween
 end
 
--- 5. العودة إلى نقطة البداية (بنفس الطريقة: Y = 67)
-local function returnToStart(startPos, speed, onComplete)
+-- 4. الطيران الأفقي (Y ثابت)
+local function flyHorizontal(targetPos, speed, onComplete)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local target = Vector3.new(startPos.X, 67, startPos.Z)
+    local target = Vector3.new(targetPos.X, hrp.Position.Y, targetPos.Z)
     local distance = (target - hrp.Position).Magnitude
     local duration = distance / speed
     
@@ -93,9 +70,9 @@ local function returnToStart(startPos, speed, onComplete)
     return tween
 end
 
--- 6. واجهة التحكم
+-- 5. إنشاء واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SkyFlyer"
+screenGui.Name = "SkyFlyerFixed"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
@@ -109,7 +86,6 @@ frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
--- زر تشغيل
 local startButton = Instance.new("TextButton")
 startButton.Size = UDim2.new(0, 100, 0, 40)
 startButton.Position = UDim2.new(0.05, 0, 0.2, 0)
@@ -120,7 +96,6 @@ startButton.Font = Enum.Font.GothamBold
 startButton.TextSize = 12
 startButton.Parent = frame
 
--- زر إيقاف (عودة)
 local stopButton = Instance.new("TextButton")
 stopButton.Size = UDim2.new(0, 100, 0, 40)
 stopButton.Position = UDim2.new(0.55, 0, 0.2, 0)
@@ -131,7 +106,6 @@ stopButton.Font = Enum.Font.GothamBold
 stopButton.TextSize = 12
 stopButton.Parent = frame
 
--- زيادة السرعة
 local speedUp = Instance.new("TextButton")
 speedUp.Size = UDim2.new(0, 40, 0, 40)
 speedUp.Position = UDim2.new(0.05, 0, 0.65, 0)
@@ -142,7 +116,6 @@ speedUp.Font = Enum.Font.GothamBold
 speedUp.TextSize = 18
 speedUp.Parent = frame
 
--- نقص السرعة
 local speedDown = Instance.new("TextButton")
 speedDown.Size = UDim2.new(0, 40, 0, 40)
 speedDown.Position = UDim2.new(0.25, 0, 0.65, 0)
@@ -153,7 +126,6 @@ speedDown.Font = Enum.Font.GothamBold
 speedDown.TextSize = 18
 speedDown.Parent = frame
 
--- عرض السرعة
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 80, 0, 30)
 speedLabel.Position = UDim2.new(0.6, 0, 0.7, 0)
@@ -164,7 +136,6 @@ speedLabel.TextSize = 12
 speedLabel.Font = Enum.Font.GothamBold
 speedLabel.Parent = frame
 
--- حالة السكريبت
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(0, 260, 0, 20)
 statusLabel.Position = UDim2.new(0.5, -130, 0, 5)
@@ -175,12 +146,12 @@ statusLabel.TextSize = 10
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.Parent = frame
 
--- 7. منطق التشغيل
+-- 6. منطق التشغيل
 local currentSpeed = 100
 local active = false
 local startPos = nil
+local startBlarant = nil
 local currentTween = nil
-local currentDescend = nil
 
 speedLabel.Text = "سرعة: " .. currentSpeed
 
@@ -194,51 +165,74 @@ speedDown.MouseButton1Click:Connect(function()
     speedLabel.Text = "سرعة: " .. currentSpeed
 end)
 
+-- تشغيل (ذهاب)
 startButton.MouseButton1Click:Connect(function()
     if active then return end
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    startPos = hrp.Position -- حفظ نقطة البداية
+    startPos = hrp.Position
     local blarant = findNearestBlarant()
     if not blarant then
         statusLabel.Text = "❌ لا يوجد Blarant"
         return
     end
+    startBlarant = blarant
     
     active = true
-    statusLabel.Text = "✈️ الطيران إلى Blarant (Y = 67)..."
+    statusLabel.Text = "📈 الصعود إلى Y = 67..."
     
-    -- الطيران إلى فوق Blarant (Y = 67)
-    currentTween = flyToPosition(blarant.Position, currentSpeed, function()
-        if active then
+    -- 1. الصعود إلى Y = 67
+    changeHeight(67, currentSpeed, function()
+        if not active then return end
+        statusLabel.Text = "✈️ الطيران إلى Blarant..."
+        
+        -- 2. الطيران الأفقي إلى فوق Blarant
+        flyHorizontal(blarant.Position, currentSpeed, function()
+            if not active then return end
             statusLabel.Text = "🪂 النزول إلى Blarant..."
-            -- النزول العمودي إلى داخل Blarant
-            currentDescend = descendToBlarant(blarant, currentSpeed, function()
+            
+            -- 3. النزول إلى داخل Blarant
+            changeHeight(blarant.Position.Y + 3, currentSpeed, function()
                 if active then
                     statusLabel.Text = "✅ وصلت داخل Blarant"
                 end
             end)
-        end
+        end)
     end)
 end)
 
+-- إيقاف (عودة)
 stopButton.MouseButton1Click:Connect(function()
     if not active then return end
     active = false
     
     if currentTween then currentTween:Cancel() end
-    if currentDescend then currentDescend:Cancel() end
     
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp and startPos then
-        statusLabel.Text = "🔄 العودة إلى نقطة البداية (Y = 67)..."
-        returnToStart(startPos, currentSpeed, function()
-            statusLabel.Text = "🏁 تم العودة"
-        end)
-    else
+    if not hrp or not startPos then
         statusLabel.Text = "⚠️ لا يمكن العودة"
+        return
     end
+    
+    statusLabel.Text = "📈 الصعود إلى Y = 67..."
+    
+    -- 1. الصعود إلى Y = 67 (من داخل Blarant)
+    changeHeight(67, currentSpeed, function()
+        if not active then return end
+        statusLabel.Text = "✈️ الطيران إلى نقطة البداية..."
+        
+        -- 2. الطيران الأفقي إلى فوق نقطة البداية
+        flyHorizontal(startPos, currentSpeed, function()
+            if not active then return end
+            statusLabel.Text = "🪂 النزول إلى نقطة البداية..."
+            
+            -- 3. النزول إلى نقطة البداية
+            changeHeight(startPos.Y, currentSpeed, function()
+                statusLabel.Text = "🏁 تم العودة"
+            end)
+        end)
+    end)
 end)
 
-print("✅ سكريبت الطيران العلوي يعمل - Y = 67 ثابت")
+print("✅ سكريبت الطيران العلوي (المعدل) يعمل - Y = 67 ثابت")
