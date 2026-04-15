@@ -1,7 +1,8 @@
--- سكريبت: Rapid Stalker V2 (معدل: ثانية هناك + ثانية هنا)
+-- سكريبت: Rapid Stalker V2 (ملاحقة خاطفة) + إلغاء مؤقت الإمساك
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
 
+-- 1. الجزر المستهدفة
 local targetIslands = {
     Vector3.new(3135.0, 10.0, 0.0),
     Vector3.new(3490.0, 10.0, 0.0),
@@ -9,6 +10,7 @@ local targetIslands = {
     Vector3.new(4164.5, 10.0, 0.0)
 }
 
+-- 2. البحث عن Blarant
 local function findBlarants()
     local blarants = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -24,17 +26,33 @@ local function findBlarants()
     return blarants
 end
 
+-- 3. النقل الخاطف
 local function rapidTeleport(targetPos)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-    
     local oldPos = hrp.CFrame
     hrp.CFrame = CFrame.new(targetPos)
     runService.Heartbeat:Wait()
     hrp.CFrame = oldPos
 end
 
--- واجهة التحكم (كما هي)
+-- 4. إلغاء مؤقت (Cooldown) زر الإمساك الأصلي
+local function disableCatchCooldown()
+    for _, btn in ipairs(player.PlayerGui:GetDescendants()) do
+        if btn:IsA("TextButton") and (btn.Name:lower():find("catch") or btn.Text:lower():find("امسك")) then
+            btn.AutoButtonColor = false
+            if btn:FindFirstChild("Debounce") then
+                btn.Debounce = false
+            end
+            local oldClick = btn.Click
+            btn.Click = function()
+                oldClick()
+            end
+        end
+    end
+end
+
+-- 5. واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "RapidStalkerV2"
 screenGui.Parent = player.PlayerGui
@@ -73,44 +91,42 @@ stopButton.Parent = frame
 local label = Instance.new("TextLabel")
 label.Size = UDim2.new(0, 190, 0, 18)
 label.Position = UDim2.new(0.5, -95, 0, 4)
-label.Text = "⚡ ملاحقة خاطفة (ثانية/ثانية)"
+label.Text = "⚡ ملاحقة خاطفة + لا مؤقت"
 label.BackgroundTransparency = 1
 label.TextColor3 = Color3.fromRGB(0, 255, 255)
 label.TextSize = 11
 label.Font = Enum.Font.Gotham
 label.Parent = frame
 
--- منطق التشغيل المعدل
+-- 6. منطق التشغيل الرئيسي
 local active = false
 local currentTarget = nil
 local stalkerCoroutine = nil
 
+-- مراقبة إلغاء المؤقت (تعمل طوال الوقت)
+local function monitorCooldown()
+    while true do
+        disableCatchCooldown()
+        wait(0.5)
+    end
+end
+coroutine.wrap(monitorCooldown)()
+
+-- وظيفة الملاحقة
 local function stalk()
     while active do
         local blarants = findBlarants()
         if #blarants == 0 then
             currentTarget = nil
             label.Text = "⚡ لا يوجد Blarant"
-            wait(1)
+            wait(0.5)
         else
             if not currentTarget or not currentTarget.Parent then
                 currentTarget = blarants[math.random(1, #blarants)]
                 label.Text = "🎯 ملاحقة Blarant"
             end
-            
-            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local startPos = hrp.CFrame
-                local targetPos = currentTarget.Position + Vector3.new(0, 5, 0)
-                
-                -- الذهاب إلى Blarant (فوري)
-                hrp.CFrame = CFrame.new(targetPos)
-                wait(1) -- انتظر ثانية هناك
-                
-                -- العودة إلى نقطة البداية (فوري)
-                hrp.CFrame = startPos
-                wait(1) -- انتظر ثانية هنا
-            end
+            rapidTeleport(currentTarget.Position + Vector3.new(0, 5, 0))
+            wait(0.1)
         end
     end
     currentTarget = nil
@@ -129,4 +145,4 @@ stopButton.MouseButton1Click:Connect(function()
     active = false
 end)
 
-print("✅ السكريبت يعمل: يذهب إلى Blarant (فورياً)، ينتظر ثانية، يعود (فورياً)، ينتظر ثانية، يكرر")
+print("✅ السكريبت يعمل: ملاحقة خاطفة + إلغاء مؤقت زر الإمساك")
