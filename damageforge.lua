@@ -107,7 +107,7 @@ local function stalk()
             
             -- النقل الخاطف المستمر (كل 0.1 ثانية)
             rapidTeleport(currentTarget.Position + Vector3.new(0, 5, 0))
-            wait(0.1) -- تكرار سريع جداً (10 مرات في الثانية)
+            wait(1) -- تكرار سريع جداً (10 مرات في الثانية)
         end
     end
     currentTarget = nil
