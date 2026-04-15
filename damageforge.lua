@@ -1,119 +1,127 @@
--- سكريبت: الاختطاف السريع (نقل، إمساك، عودة في 0.5 ثانية)
+-- سكريبت: Rapid Stalker (تنقل خاطف بينك وبين Blarant)
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
 
--- 1. الجزر المستهدفة (مواقع Blarant التقريبية)
+-- 1. الجزر المستهدفة
 local targetIslands = {
-    Vector3.new(3135.0, 10.0, 0.0), -- Secret1
-    Vector3.new(3490.0, 10.0, 0.0), -- Secret2
-    Vector3.new(3853.0, 10.0, 0.0), -- Secret3
-    Vector3.new(4164.5, 10.0, 0.0)  -- Celestial
+    Vector3.new(3135.0, 10.0, 0.0),
+    Vector3.new(3490.0, 10.0, 0.0),
+    Vector3.new(3853.0, 10.0, 0.0),
+    Vector3.new(4164.5, 10.0, 0.0)
 }
 
--- 2. البحث عن Blarant (أقرب قطعة غير مثبتة)
-local function findNearestBlarant()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
-    
-    local nearest = nil
-    local minDist = math.huge
+-- 2. البحث عن Blarant (غير مثبت، غير متصادم) فوق الجزر
+local function findBlarants()
+    local blarants = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Part") and not obj.Anchored and not obj.CanCollide then
             for _, islandPos in ipairs(targetIslands) do
                 if (obj.Position - islandPos).Magnitude < 150 then
-                    local dist = (hrp.Position - obj.Position).Magnitude
-                    if dist < minDist then
-                        minDist = dist
-                        nearest = obj
-                    end
+                    table.insert(blarants, obj)
                     break
                 end
             end
         end
     end
-    return nearest
+    return blarants
 end
 
--- 3. وظيفة الاختطاف السريع
-local function rapidAbduct()
+-- 3. النقل الخاطف (بين موقعك وموقع الهدف)
+local function rapidTeleport(targetPos)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    local blarant = findNearestBlarant()
-    if not hrp or not blarant then
-        print("❌ لا يوجد Blarant قريب")
-        return false
-    end
+    if not hrp then return end
     
-    -- حفظ الموقع الأصلي
     local oldPos = hrp.CFrame
-    
-    -- النقل إلى موقع Blarant
-    hrp.CFrame = CFrame.new(blarant.Position + Vector3.new(0, 5, 0))
-    runService.Heartbeat:Wait() -- انتظر إطار واحد
-    
-    -- البحث عن زر الإمساك والضغط عليه
-    local catchButton = nil
-    for _, btn in ipairs(player.PlayerGui:GetDescendants()) do
-        if btn:IsA("TextButton") and (btn.Name:lower():find("catch") or btn.Text:lower():find("امسك")) then
-            catchButton = btn
-            break
-        end
-    end
-    
-    if catchButton then
-        catchButton:Click()
-    end
-    
-    -- العودة الفورية
+    hrp.CFrame = CFrame.new(targetPos)
+    runService.Heartbeat:Wait()
     hrp.CFrame = oldPos
-    
-    print(catchButton and "✅ تم الإمساك بـ Blarant" or "⚠️ لم يتم العثور على زر الإمساك")
-    return catchButton ~= nil
 end
 
 -- 4. إنشاء واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "RapidAbductGUI"
+screenGui.Name = "RapidStalker"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 150, 0, 70)
-frame.Position = UDim2.new(0.5, -75, 0.8, 0)
+frame.Size = UDim2.new(0, 200, 0, 70)
+frame.Position = UDim2.new(0.5, -100, 0.8, 0)
 frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 frame.BackgroundTransparency = 0.5
 frame.BorderSizePixel = 2
-frame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+frame.BorderColor3 = Color3.fromRGB(0, 255, 255)
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
-local abductButton = Instance.new("TextButton")
-abductButton.Size = UDim2.new(0, 130, 0, 45)
-abductButton.Position = UDim2.new(0.5, -65, 0.5, -22)
-abductButton.Text = "⚡ اختطاف سريع"
-abductButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-abductButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-abductButton.Font = Enum.Font.GothamBold
-abductButton.TextSize = 12
-abductButton.Parent = frame
+local startButton = Instance.new("TextButton")
+startButton.Size = UDim2.new(0, 80, 0, 45)
+startButton.Position = UDim2.new(0.05, 0, 0.5, -22)
+startButton.Text = "▶ تشغيل"
+startButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+startButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+startButton.Font = Enum.Font.GothamBold
+startButton.TextSize = 12
+startButton.Parent = frame
+
+local stopButton = Instance.new("TextButton")
+stopButton.Size = UDim2.new(0, 80, 0, 45)
+stopButton.Position = UDim2.new(0.55, 0, 0.5, -22)
+stopButton.Text = "⏹ إيقاف"
+stopButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopButton.Font = Enum.Font.GothamBold
+stopButton.TextSize = 12
+stopButton.Parent = frame
 
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(0, 140, 0, 18)
-label.Position = UDim2.new(0.5, -70, 0, 4)
-label.Text = "⚡ اختطاف وإمساك فوري"
+label.Size = UDim2.new(0, 190, 0, 18)
+label.Position = UDim2.new(0.5, -95, 0, 4)
+label.Text = "⚡ ملاحقة خاطفة"
 label.BackgroundTransparency = 1
-label.TextColor3 = Color3.fromRGB(255, 0, 0)
+label.TextColor3 = Color3.fromRGB(0, 255, 255)
 label.TextSize = 11
 label.Font = Enum.Font.Gotham
 label.Parent = frame
 
--- 5. ربط الزر
-abductButton.MouseButton1Click:Connect(function()
-    abductButton.Text = "⏳ جاري..."
-    abductButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    rapidAbduct()
-    wait(0.5)
-    abductButton.Text = "⚡ اختطاف سريع"
-    abductButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+-- 5. منطق التشغيل
+local active = false
+local currentTarget = nil
+local stalkerCoroutine = nil
+
+local function stalk()
+    while active do
+        -- تحديث قائمة الـ Blarants
+        local blarants = findBlarants()
+        if #blarants == 0 then
+            currentTarget = nil
+            label.Text = "⚡ لا يوجد Blarant"
+            wait(1)
+        else
+            -- اختيار هدف (نفس الهدف السابق إذا كان لا يزال موجوداً)
+            if not currentTarget or not currentTarget.Parent then
+                currentTarget = blarants[math.random(1, #blarants)]
+                label.Text = "🎯 ملاحقة Blarant"
+            end
+            
+            -- النقل الخاطف إلى الهدف
+            rapidTeleport(currentTarget.Position + Vector3.new(0, 5, 0))
+            wait(0.2) -- سرعة التنقل (0.2 ثانية بين كل نقلة)
+        end
+    end
+    currentTarget = nil
+    label.Text = "⚡ متوقف"
+end
+
+startButton.MouseButton1Click:Connect(function()
+    if active then return end
+    active = true
+    if stalkerCoroutine then coroutine.close(stalkerCoroutine) end
+    stalkerCoroutine = coroutine.wrap(stalk)
+    stalkerCoroutine()
 end)
 
-print("✅ سكريبت الاختطاف السريع يعمل - اضغط على الزر لاختطاف Blarant والعودة")
+stopButton.MouseButton1Click:Connect(function()
+    active = false
+end)
+
+print("✅ سكريبت الملاحقة الخاطفة يعمل - اضغط 'تشغيل' للبدء")
