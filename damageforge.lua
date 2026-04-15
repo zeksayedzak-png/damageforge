@@ -1,7 +1,7 @@
--- سكريبت: Teleport Stalker (نقل فوري مع تأخير ثانية)
+-- سكريبت: Rapid Stalker V2 (معدل: ثانية هناك + ثانية هنا)
 local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
 
--- 1. الجزر المستهدفة
 local targetIslands = {
     Vector3.new(3135.0, 10.0, 0.0),
     Vector3.new(3490.0, 10.0, 0.0),
@@ -9,7 +9,6 @@ local targetIslands = {
     Vector3.new(4164.5, 10.0, 0.0)
 }
 
--- 2. البحث عن Blarant
 local function findBlarants()
     local blarants = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -25,17 +24,19 @@ local function findBlarants()
     return blarants
 end
 
--- 3. النقل الفوري (Teleport)
-local function teleport(pos)
+local function rapidTeleport(targetPos)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = CFrame.new(pos)
-    end
+    if not hrp then return end
+    
+    local oldPos = hrp.CFrame
+    hrp.CFrame = CFrame.new(targetPos)
+    runService.Heartbeat:Wait()
+    hrp.CFrame = oldPos
 end
 
--- 4. إنشاء واجهة التحكم
+-- واجهة التحكم (كما هي)
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TeleportStalker"
+screenGui.Name = "RapidStalkerV2"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
@@ -72,14 +73,14 @@ stopButton.Parent = frame
 local label = Instance.new("TextLabel")
 label.Size = UDim2.new(0, 190, 0, 18)
 label.Position = UDim2.new(0.5, -95, 0, 4)
-label.Text = "⚡ Teleport Stalker"
+label.Text = "⚡ ملاحقة خاطفة (ثانية/ثانية)"
 label.BackgroundTransparency = 1
 label.TextColor3 = Color3.fromRGB(0, 255, 255)
 label.TextSize = 11
 label.Font = Enum.Font.Gotham
 label.Parent = frame
 
--- 5. منطق التشغيل
+-- منطق التشغيل المعدل
 local active = false
 local currentTarget = nil
 local stalkerCoroutine = nil
@@ -99,16 +100,16 @@ local function stalk()
             
             local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
-                local startPos = hrp.Position
+                local startPos = hrp.CFrame
                 local targetPos = currentTarget.Position + Vector3.new(0, 5, 0)
                 
-                -- Teleport فوري إلى Blarant
-                teleport(targetPos)
-                wait(1) -- انتظر ثانية
+                -- الذهاب إلى Blarant (فوري)
+                hrp.CFrame = CFrame.new(targetPos)
+                wait(1) -- انتظر ثانية هناك
                 
-                -- Teleport فوري إلى نقطة البداية
-                teleport(startPos)
-                wait(1) -- انتظر ثانية
+                -- العودة إلى نقطة البداية (فوري)
+                hrp.CFrame = startPos
+                wait(1) -- انتظر ثانية هنا
             end
         end
     end
@@ -128,4 +129,4 @@ stopButton.MouseButton1Click:Connect(function()
     active = false
 end)
 
-print("✅ سكريبت Teleport Stalker يعمل - اضغط 'تشغيل' للبدء")
+print("✅ السكريبت يعمل: يذهب إلى Blarant (فورياً)، ينتظر ثانية، يعود (فورياً)، ينتظر ثانية، يكرر")
