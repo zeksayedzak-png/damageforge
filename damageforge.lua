@@ -1,4 +1,4 @@
--- سكريبت: الطيران العلوي (Y = 67) مع صعود أولي + عودة صحيحة
+-- سكريبت: الطيران العلوي (Y = 67) + عودة صحيحة + سرعة 700
 local player = game.Players.LocalPlayer
 local tweenService = game:GetService("TweenService")
 
@@ -34,7 +34,7 @@ local function findNearestBlarant()
     return nearest
 end
 
--- 3. الصعود/النزول العمودي (تغيير Y فقط)
+-- 3. الصعود/النزول العمودي
 local function changeHeight(targetY, speed, onComplete)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
@@ -52,7 +52,7 @@ local function changeHeight(targetY, speed, onComplete)
     return tween
 end
 
--- 4. الطيران الأفقي (Y ثابت)
+-- 4. الطيران الأفقي
 local function flyHorizontal(targetPos, speed, onComplete)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
@@ -72,7 +72,7 @@ end
 
 -- 5. إنشاء واجهة التحكم
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SkyFlyerFixed"
+screenGui.Name = "SkyFlyerPerfect"
 screenGui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
@@ -129,7 +129,7 @@ speedDown.Parent = frame
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 80, 0, 30)
 speedLabel.Position = UDim2.new(0.6, 0, 0.7, 0)
-speedLabel.Text = "سرعة: 100"
+speedLabel.Text = "سرعة: 700"
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 speedLabel.TextSize = 12
@@ -147,7 +147,7 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.Parent = frame
 
 -- 6. منطق التشغيل
-local currentSpeed = 100
+local currentSpeed = 700  -- ✅ تم التعديل: 700 بدلاً من 100
 local active = false
 local startPos = nil
 local startBlarant = nil
@@ -156,12 +156,12 @@ local currentTween = nil
 speedLabel.Text = "سرعة: " .. currentSpeed
 
 speedUp.MouseButton1Click:Connect(function()
-    currentSpeed = currentSpeed + 20
+    currentSpeed = currentSpeed + 100
     speedLabel.Text = "سرعة: " .. currentSpeed
 end)
 
 speedDown.MouseButton1Click:Connect(function()
-    currentSpeed = math.max(20, currentSpeed - 20)
+    currentSpeed = math.max(100, currentSpeed - 100)
     speedLabel.Text = "سرعة: " .. currentSpeed
 end)
 
@@ -182,17 +182,14 @@ startButton.MouseButton1Click:Connect(function()
     active = true
     statusLabel.Text = "📈 الصعود إلى Y = 67..."
     
-    -- 1. الصعود إلى Y = 67
     changeHeight(67, currentSpeed, function()
         if not active then return end
         statusLabel.Text = "✈️ الطيران إلى Blarant..."
         
-        -- 2. الطيران الأفقي إلى فوق Blarant
         flyHorizontal(blarant.Position, currentSpeed, function()
             if not active then return end
             statusLabel.Text = "🪂 النزول إلى Blarant..."
             
-            -- 3. النزول إلى داخل Blarant
             changeHeight(blarant.Position.Y + 3, currentSpeed, function()
                 if active then
                     statusLabel.Text = "✅ وصلت داخل Blarant"
@@ -202,7 +199,7 @@ startButton.MouseButton1Click:Connect(function()
     end)
 end)
 
--- إيقاف (عودة)
+-- إيقاف (عودة) ✅ تم التعديل لتعمل بنفس طريقة الذهاب
 stopButton.MouseButton1Click:Connect(function()
     if not active then return end
     active = false
@@ -219,12 +216,10 @@ stopButton.MouseButton1Click:Connect(function()
     
     -- 1. الصعود إلى Y = 67 (من داخل Blarant)
     changeHeight(67, currentSpeed, function()
-        if not active then return end
         statusLabel.Text = "✈️ الطيران إلى نقطة البداية..."
         
         -- 2. الطيران الأفقي إلى فوق نقطة البداية
         flyHorizontal(startPos, currentSpeed, function()
-            if not active then return end
             statusLabel.Text = "🪂 النزول إلى نقطة البداية..."
             
             -- 3. النزول إلى نقطة البداية
@@ -235,4 +230,4 @@ stopButton.MouseButton1Click:Connect(function()
     end)
 end)
 
-print("✅ سكريبت الطيران العلوي (المعدل) يعمل - Y = 67 ثابت")
+print("✅ السكريبت المثالي يعمل - السرعة الابتدائية 700")
